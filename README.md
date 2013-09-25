@@ -1,7 +1,7 @@
 jQuery-Mobile-Quiz-App
 ======================
 PURPOSE
-A simple flashcards app that works well on a mobile devices.
+A simple flashcards app that works on mobile devices.
 
 
 CREDITS

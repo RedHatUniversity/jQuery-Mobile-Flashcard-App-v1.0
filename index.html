@@ -1,0 +1,341 @@
+
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1">
+		<title>Psych 1100 Flashcard App</title>
+		<link rel="stylesheet" href="themes/OSU.min.css" />
+		<link rel="stylesheet" href="themes/jquery.mobile.structure-1.1.1.css" />
+        <link rel="stylesheet" href="themes/custom.css" />
+		<script src="jquery-1.7.1.min.js"></script>
+		<script src="jquery.mobile-1.1.1.min.js"></script>
+        <script src="jquery.csv-0.62.js"></script>
+	</head>
+	<body>
+<script>
+var wordbank = new Array ("");
+wordbank[0] = new Array("Introduction","Naïve Realism","Belief that we see the world exactly as it really is.","0");
+wordbank[1] = new Array("Introduction","Science","An approach to evidence, and a set of skills to prevent us from fooling ourselves. ","0");
+wordbank[2] = new Array("Introduction","Third Variable Problem","Case in which a third variable causes the correlation between the two other variables.","0");
+wordbank[3] = new Array("Research Methods","Placebo effect","Improvement resulting from the mere expectation of improvement.","0");
+wordbank[4] = new Array("Research Methods","Blind","Being unaware of whether one is in the experimental or the control group.","0");
+wordbank[5] = new Array("Research Methods","Blind","Being unaware of whether one is in the experimental or the control group.","0");
+
+
+//create an array to hold the active vocabulary words in the future
+var currentwords = new Array();
+//create a variable to hold the current card in the future
+var currentcard = "";
+var currentchapter = "";
+//creates a variable to hold whether the answer is showing or hidden
+var answerstate = "";
+var numcorrect = 0;
+var numwrong = 0;
+var wrongwords = new Array();
+var randomcard = "";
+var questionshowing = 1;
+var questionhidden = 2;
+
+//copy a list of the chapter titles
+var rawChapterTitles = new Array();	
+for (var i=0; i < wordbank.length; i++) {
+	rawChapterTitles[i] = wordbank[i][0];
+}
+//create a function to return the unique values from an array
+function unique(array){
+    return $.grep(array,function(el,index){
+        return index == $.inArray(el,array);
+    });
+}
+//create a new array containing the unique chapter titles
+var uniqueChapterTitles = new Array();
+uniqueChapterTitles = unique(rawChapterTitles);
+
+//add the unique chapter titles to the list of chapters
+$("#autoselect").live("pagebeforeshow", function() {
+	$('#centerlistdisplay').empty();
+	for (var i=0; i < uniqueChapterTitles.length; i++) {
+		$("#centerlistdisplay").append("<li> <a href=\"#flashcards\" id=\""+ uniqueChapterTitles[i]+"\" class=\"chapterselect\">" + uniqueChapterTitles[i] + "</a></li>")
+		$("#centerlistdisplay").listview('refresh');
+	}
+	$(".chapterselect").bind('click', chapterselect);
+});
+$("#flashcards").live("pageinit", function() {
+	//sets the current accuracy
+	var accuracy = 100;
+	//empties the list of wrong answers
+	var wronganswers = new Array();
+	$("#right").bind('click', gotright);
+	$("#wrong").bind('click', gotwrong);
+	$("#question1").bind('click', clickquestion1);
+	$("#question2").bind('click', clickquestion2);
+	$("#showanswers").bind('click', switchQandA);
+	$("#reset").bind('click', resetcards);
+});
+
+
+$("#flashcards").live("pagebeforeshow", function() {
+	$('#answer').hide();
+	$('#question2').hide();
+	changecardcount();
+	answerstate = "hidden";
+	loadcard();
+});
+function loadcard (){
+	if(currentwords.length >0){
+	randomcard = Math.floor(Math.random() * currentwords.length);
+	$("#questioncontainer").empty();
+    $('#questioncontainer').append("<a href=\"#\" data-role=\"button\" data-icon=\"plus\" id=\"question1\"><h3 class=\"centeredtext\">" + currentwords[randomcard][questionshowing] + "</h3></a>");
+	$('#questioncontainer').append("<a href=\"#\" data-role=\"button\" data-icon=\"minus\" id=\"question2\"><h3 class=\"centeredtext\">" + currentwords[randomcard][questionshowing] + "</h3></a>");
+    $('#questioncontainer').append("<h3 class=\"centeredtext\" id=\"answer\">"+ currentwords[randomcard][questionhidden] + " </h3>");
+	$('#questioncontainer').trigger('create');
+	$("#question1").bind('click', clickquestion1);
+	$("#question2").bind('click', clickquestion2);
+	$('#answer').hide();
+	$('#question2').hide();
+	currentcard = randomcard;
+	clickquestion2();
+	}
+}
+function gotright(){
+	if(currentwords.length >0){
+		currentwords.splice(randomcard,1);
+		changecardcount();
+		numcorrect++;
+		changeaccuracy();
+	} else if(currentwords.length ==0 ){
+		$("#question1 .ui-btn-text").text("All done! Click \"Reset\" to try again or \"Study List\" to see which terms you should review");
+		$("#question2 .ui-btn-text").text("All done! Click \"Reset\" to try again or \"Study List\" to see which terms you should review");
+		$("#answer").text(" ");
+	}
+	loadcard();
+}
+function gotwrong(){
+	console.log("gotwrong");
+	console.log(currentwords[randomcard][1] + "was the card that was wrong");
+	console.log("wrongwords are:");
+	wrongwords.push(currentwords[randomcard]);
+	for(var i=0; i < wrongwords.length; i++){
+		console.log(wrongwords[i][1]);
+	}
+	numwrong++;
+	changeaccuracy();
+	loadcard();	
+}
+function clickquestion1(){
+	console.log("clickquestion1");
+		$('#answer').show().trigger( 'updatelayout' );
+		$('#question1').hide().trigger( 'updatelayout' );
+ 		$('#question2').show().trigger( 'updatelayout' );
+		answerstate = "showing";	
+	} 
+function clickquestion2(){
+		$('#answer').hide().trigger( 'updatelayout' );
+		$('#question1').show().trigger( 'updatelayout' );
+		$('#question2').hide().trigger( 'updatelayout' );
+		answerstate = "hidden";
+}
+function showanswers(){
+	console.log("showanswers");
+}
+function changecardcount(){
+	$("#cardcount .ui-btn-text").text(currentwords.length + " Cards");
+}
+function changeaccuracy(){
+	accuracy = numcorrect/(numcorrect+numwrong)*100;
+	accuracy = Math.round(accuracy);
+	if(isNaN(accuracy) == true){
+		accuracy = "--";
+	}
+	$("#percentcorrect .ui-btn-text").text(accuracy + "%");
+}
+function resetcards(){
+	console.log("reset");
+	wrongwords.length = 0;
+	selectwords();
+	$("#questioncontainer").empty();
+    $('#questioncontainer').append("<a href=\"#\" data-role=\"button\" data-icon=\"plus\" id=\"question1\"><h3 class=\"centeredtext\">All done! Click \"Reset\" to try again or \"Study List\" to see which terms you should review </h3></a>");
+	$('#questioncontainer').append("<a href=\"#\" data-role=\"button\" data-icon=\"minus\" id=\"question2\"><h3 class=\"centeredtext\">All done! Click \"Reset\" to try again or \"Study List\" to see which terms you should review</h3></a>");
+    $('#questioncontainer').append("<h3 class=\"centeredtext\" id=\"answer\"> </h3>");
+	$('#flashcards').trigger('create');
+	$("#question1").bind('click', clickquestion1);
+	$("#question2").bind('click', clickquestion2);
+	loadcard();
+	changecardcount();
+	numcorrect = 0;
+	numwrong = 0;
+	changeaccuracy();
+}
+//everything that happens when the document loads
+$(document).ready(function()
+    {
+		//set it up so that any button with the class "chapterselect" will call the chapterselect function when clicked
+        console.log("documentready");
+    }
+);
+function chapterselect(){
+ console.log("Selected" + this.id);
+ currentchapter = this.id;
+ selectwords();
+ changecardcount();
+ resetcards();
+ console.log("changing chapter heading to " + this.id);
+ $("#flashcardheader").text(this.id);
+}
+function selectwords(){
+ 	currentwords.length = 0;
+	 for (var i=0; i < wordbank.length; i++) {
+		if(currentchapter == wordbank[i][0]){
+			currentwords[currentwords.length] = wordbank[i];
+		}
+	 }
+	 for (var i=0; i < currentwords.length; i++) {
+		 console.log(currentwords[i][1]);
+	 }
+}
+$("#studylist").live("pagebeforeshow", function() {
+	$('#wordsyoumissed').empty();
+	for (var i = 0; i < wrongwords.length; i++){
+		$("#wordsyoumissed").append("<li> <h3 class=\"lefttext\">" + wrongwords[i][1] + "</h3><p class=\"lefttext\">" + wrongwords[i][2] + "</p><p class=\"ui-li-aside\"><strong>" + wrongwords[i][3] + "</strong></p></li>")
+		$("#wordsyoumissed").listview('refresh');
+	}
+	$('#allthewords').empty();	
+	for (var i = 0; i < currentwords.length; i++){
+		$("#allthewords").append("<li> <h3 class=\"lefttext\">" + currentwords[i][1] + "</h3><p class=\"lefttext\">" + currentwords[i][2] + "</p><p class=\"ui-li-aside\"><strong>" + currentwords[i][3] + "</strong></p></li>")
+		$("#allthewords").listview('refresh');
+	}
+});
+function switchQandA(){
+if (questionshowing == 2){
+	questionshowing = 1;
+	questionhidden = 2;
+} else {
+	questionshowing = 2;
+	questionhidden = 1;	
+}
+console.log(questionshowing + "is the state of questionshowing");
+	$("#questioncontainer").empty();
+    $('#questioncontainer').append("<a href=\"#\" data-role=\"button\" data-icon=\"plus\" id=\"question1\"><h3 class=\"centeredtext\">" + currentwords[randomcard][questionshowing] + "</h3></a>");
+	$('#questioncontainer').append("<a href=\"#\" data-role=\"button\" data-icon=\"minus\" id=\"question2\"><h3 class=\"centeredtext\">" + currentwords[randomcard][questionshowing] + "</h3></a>");
+    $('#questioncontainer').append("<h3 class=\"centeredtext\" id=\"answer\">"+ currentwords[randomcard][questionhidden] + " </h3>");
+	$('#questioncontainer').trigger('create');
+	$("#question1").bind('click', clickquestion1);
+	$("#question2").bind('click', clickquestion2);
+	$('#answer').hide();
+	$('#answer').trigger('updatelayout');
+	$('#question2').hide();
+	$('#question2').trigger('updatelayout');
+}
+
+</script>	
+		<div data-role="page" id="home" data-theme="a">
+			<div data-role="header" data-position="inline">
+				<a href="#home" data-icon="home" data-iconpos="notext" class="ui-btn-right jqm-home">Home</a>
+                <h1 >Psych 1100</h1>
+			</div>
+			 				<div class="whitebar">
+                </div>
+                <div class="redbar">
+                </div>
+                <div class="whitebar">
+                </div>
+            <div data-role="content" data-theme="a">
+				<a href="#autoselect" data-role="button"><h3 class="centeredtext">Warning:</h3>
+                <p class="centeredtext">Using this app is no substitute for reading the book or going to lecture.  There are many ideas and terms that are in the book but not in these cards, and are still fair game for the exams.</p>
+                <h3 class="centeredtext">Click Here to Begin</h3></a>
+			</div>
+		</div>
+        
+		<div data-role="page" id="autoselect" data-theme="a">
+			<div data-role="header">
+       			<a href="index.html" data-role="button" data-icon="back" data-iconpos="notext" data-rel="back">Back</a>
+        		<a href="#home" data-icon="home" data-iconpos="notext" class="ui-btn-right jqm-home">Home</a>
+				<h1>Select Chapter</h1>
+    		</div><!-- /header -->
+ 				<div class="whitebar">
+                </div>
+                <div class="redbar">
+                </div>
+                <div class="whitebar">
+                </div>
+                <div data-role="content" data-theme="a">	
+ 				<div class="content-primary">	
+            		<ul data-role="listview" data-filter="false" id="centerlistdisplay">
+            		</ul>
+				</div><!--/content-primary -->		
+			</div><!-- /content -->
+		</div><!-- /page two -->
+        
+        
+        
+        
+		<div data-role="page" id="studylist" data-theme="a">
+			<div data-role="header">
+       			<a href="index.html" data-role="button" data-icon="back" data-iconpos="notext" data-rel="back">Back</a>
+        		<a href="#home" data-icon="home" data-iconpos="notext" class="ui-btn-right jqm-home">Home</a>
+				<h1>Studylist</h1>
+    		</div><!-- /header -->
+ 				<div class="whitebar">
+                </div>
+                <div class="redbar">
+                </div>
+                <div class="whitebar">
+                </div>
+			<div data-role="content" data-theme="a">	
+ 				<div class="content-primary">	
+        <h3>Words you Missed:</h3>
+		<ul data-role="listview" data-inset="true" id="wordsyoumissed">
+		</ul>
+        <h3>Word List:</h3>
+        <ul data-role="listview" data-inset="true" id="allthewords">
+		</ul>
+				</div><!--/content-primary -->		
+			</div><!-- /content -->
+		</div><!-- /page two -->
+		
+        
+        <div data-role="page" id="flashcards" data-theme="a">
+			<div data-role="header">
+       			<a href="index.html" data-role="button" data-icon="back" data-iconpos="notext" data-rel="back">Back</a>
+        		<a href="#home" data-icon="home" data-iconpos="notext" class="ui-btn-right jqm-home">Home</a>
+				<h1 id="flashcardheader">Chapter</h1>
+    		</div><!-- /header -->
+ 				<div class="whitebar">
+                </div>
+                <div class="redbar">
+                </div>
+                <div class="whitebar">
+                </div>
+                <div data-role="navbar">
+					<ul>
+						<li><a href="#" data-icon="grid" id="cardcount">X Cards</a></li>
+						<li><a href="#" data-icon="check" class="ui-btn-active" id="percentcorrect">--%</a></li>
+						<li><a href="#"  data-icon="refresh" id="reset">Reset</a></li>
+					</ul>
+                </div>	
+                <div data-role="navbar">
+					<ul>
+						<li><a href="#" id="showanswers">Switch Answers</a></li>
+						<li><a href="#studylist" id="studylistbutton">Study List</a></li>
+					</ul>
+                </div>			
+            <div data-role="content" data-theme="a">	
+                <div class="content-primary" id="questioncontainer">	
+                	<a href="#" data-role="button" data-icon="plus" id="question1"><h3 class="centeredtext">All done! Click "Reset" to try again or "Study List" to see which terms you should review </h3></a>
+					<a href="#" data-role="button" data-icon="minus" id="question2"><h3 class="centeredtext">All done! Click "Reset" to try again or "Study List" to see which terms you should review</h3></a>
+                    <h3 class="centeredtext" id="answer"> </h3>
+                   </div><!--/content-primary -->	
+            </div><!-- /content -->
+			<div data-role="footer" data-id="foo1" data-position="fixed">
+				<div data-role="navbar" data-iconpos="bottom">
+					<ul>
+						<li ><a href="#" data-icon="delete" id="wrong">Wrong</a></li>
+						<li><a href="#"  data-icon="plus" id="right">Right</a></li>
+					</ul>
+				</div><!-- /navbar -->
+			</div><!-- /footer -->
+		</div><!-- /page two -->
+
+	</body>
+</html>
